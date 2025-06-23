@@ -1,4 +1,3 @@
-using System.Text.Json.Serialization;
 using Constraintor.Core.Utils;
 
 namespace Constraintor.Core.Constraints;
@@ -8,13 +7,15 @@ namespace Constraintor.Core.Constraints;
 /// Each constraint may define optional conditions via <c>When</c> that determine
 /// when it becomes active.
 /// </summary>
-public abstract class Constraint
+public abstract class Constraint(
+    IEnumerable<string> targets,
+    IReadOnlyDictionary<string, List<ActivationCondition>>? when = null)
 {
     /// <summary>
     /// The list of field names this constraint applies to.
     /// Typically, a constraint targets a single field, but multi-field constraints are allowed.
     /// </summary>
-    protected IReadOnlyList<string> Targets { get; } = [];
+    protected IReadOnlyList<string> Targets { get; } = targets.ToList().AsReadOnly();
 
     /// <summary>
     /// Prerequisite conditions under which this constraint becomes active.
@@ -25,15 +26,7 @@ public abstract class Constraint
     /// Multiple conditions for a single field are also evaluated as AND.
     /// </summary>
     private IReadOnlyDictionary<string, List<ActivationCondition>> When { get; } =
-        new Dictionary<string, List<ActivationCondition>>();
-
-    /// <summary>
-    /// Default constructor required for deserialization.
-    /// </summary>
-    [JsonConstructor]
-    protected Constraint()
-    {
-    }
+        when ?? new Dictionary<string, List<ActivationCondition>>();
 
     /// <summary>
     ///  Determines whether the constraint is satisfied based on the current field assignments.
@@ -41,7 +34,7 @@ public abstract class Constraint
     /// </summary>
     /// <param name="fieldsAssignment">The current field-value mapping.</param>
     /// <returns><c>true</c> if the constraint is satisfied, otherwise <c>false</c>.</returns>
-    public abstract bool IsSatisfied(Dictionary<string, object> fieldsAssignment);
+    public abstract bool IsSatisfied(IReadOnlyDictionary<string, object?> fieldsAssignment);
 
     /// <summary>
     /// Determines whether this constraint should be applied
@@ -49,7 +42,7 @@ public abstract class Constraint
     /// </summary>
     /// <param name="fieldsAssignment">The current field-value mapping.</param>
     /// <returns><c>true</c> if the constraint is active; otherwise, <c>false</c>.</returns>
-    protected bool ShouldApply(Dictionary<string, object> fieldsAssignment)
+    protected bool ShouldApply(IReadOnlyDictionary<string, object?> fieldsAssignment)
     {
         foreach (var (field, conditions) in When)
         {
