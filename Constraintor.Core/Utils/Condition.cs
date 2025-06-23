@@ -22,9 +22,9 @@ public class ActivationCondition
     public ActivationConditionOperator Operator { get; set; }
     public required object Value { get; set; }
 
-    public bool Matches(object assign)
+    public bool Matches(object? assign)
     {
-        return Operator switch
+        return assign != null && Operator switch
         {
             ActivationConditionOperator.Equals => Equals(Value, assign),
             ActivationConditionOperator.NotEquals => !Equals(Value, assign),
