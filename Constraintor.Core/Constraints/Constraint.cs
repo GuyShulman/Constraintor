@@ -9,13 +9,13 @@ namespace Constraintor.Core.Constraints;
 /// </summary>
 public abstract class Constraint(
     IEnumerable<string> targets,
-    IReadOnlyDictionary<string, List<ActivationCondition>>? when = null)
+    IReadOnlyDictionary<string, List<ActivationCondition>>? when = null) : IViolatingConstraint
 {
     /// <summary>
     /// The list of field names this constraint applies to.
     /// Typically, a constraint targets a single field, but multi-field constraints are allowed.
     /// </summary>
-    protected IReadOnlyList<string> Targets { get; } = targets.ToList().AsReadOnly();
+    public IReadOnlyList<string> Targets => targets.ToList().AsReadOnly();
 
     /// <summary>
     /// Prerequisite conditions under which this constraint becomes active.
@@ -29,34 +29,57 @@ public abstract class Constraint(
         when ?? new Dictionary<string, List<ActivationCondition>>();
 
     /// <summary>
-    ///  Determines whether the constraint is satisfied based on the current field assignments.
-    /// This method is only evaluated if <see cref="ShouldApply"/> returns true.
-    /// </summary>
-    /// <param name="fieldsAssignment">The current field-value mapping.</param>
-    /// <returns><c>true</c> if the constraint is satisfied, otherwise <c>false</c>.</returns>
-    public abstract bool IsSatisfied(IReadOnlyDictionary<string, object?> fieldsAssignment);
-
-    /// <summary>
     /// Determines whether this constraint should be applied
     /// based on whether its activation conditions are met.
     /// </summary>
     /// <param name="fieldsAssignment">The current field-value mapping.</param>
     /// <returns><c>true</c> if the constraint is active; otherwise, <c>false</c>.</returns>
-    protected bool ShouldApply(IReadOnlyDictionary<string, object?> fieldsAssignment)
+    private bool ShouldApply(IReadOnlyDictionary<string, object?> fieldsAssignment)
     {
         foreach (var (field, conditions) in When)
         {
-            if (!fieldsAssignment.TryGetValue(field, out var value))
-                return false;
-
-            if (conditions.Any(condition => !condition.Matches(value)))
-            {
-                return false;
-            }
+            if (!fieldsAssignment.TryGetValue(field, out var value)) return false;
+            if (conditions.Any(condition => !condition.Matches(value))) return false;
         }
 
         return true;
     }
+
+    /// <summary>
+    /// Collects all target fields that violate the constraint.
+    /// This method is only evaluated if <see cref="ShouldApply"/> returns <c>true</c>.
+    /// </summary>
+    /// <param name="fieldsAssignment">A map of current field names to their assigned values.</param>
+    /// <returns>
+    /// A dictionary where each key is a field name that violates the constraint,
+    /// and the value is the offending value.
+    /// </returns>
+    public virtual IReadOnlyDictionary<string, object?> GetViolatingFields(
+        IReadOnlyDictionary<string, object?> fieldsAssignment)
+    {
+        var violations = new Dictionary<string, object?>();
+
+        if (!ShouldApply(fieldsAssignment))
+            return violations;
+
+        foreach (var target in Targets)
+        {
+            if (!fieldsAssignment.TryGetValue(target, out var value)) continue;
+
+            if (!IsFieldValid(target, value))
+                violations[target] = value;
+        }
+
+        return violations;
+    }
+
+    /// <summary>
+    /// Activates constraint rules logic and validates the given field's value.
+    /// </summary>
+    /// <param name="fieldName">The target field name to be checked.</param>
+    /// <param name="value">The value of the given field.</param>
+    /// <returns>True if value satisfies constraint, false otherwise.</returns>
+    protected abstract bool IsFieldValid(string fieldName, object? value);
 
     public override string ToString() => $"{GetType().Name}: targets=[{string.Join(", ", Targets)}]";
 }

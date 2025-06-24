@@ -8,42 +8,29 @@ namespace Constraintor.Core.Constraints;
 /// indicates each field nullability under the conditions declared.
 /// </summary>
 public sealed class NullabilityConstraint(
-    IReadOnlyDictionary<string, bool> targetFieldNullabilityMap,
+    IReadOnlyDictionary<string, bool> targetNullability,
     IReadOnlyDictionary<string, List<ActivationCondition>>? when = null)
-    : Constraint(targetFieldNullabilityMap.Keys, when)
+    : Constraint(targetNullability.Keys, when)
 {
     /// <summary>
     /// Maps each field to a boolean indicating whether it must be null (true) or non-null (false).
     /// </summary>
-    private IReadOnlyDictionary<string, bool> TargetFieldNullabilityMap { get; } = targetFieldNullabilityMap;
+    private IReadOnlyDictionary<string, bool> TargetNullability { get; } = targetNullability;
 
     /// <summary>
-    ///  Determines whether the constraint is satisfied based on the current field assignments.
-    /// Constraint considers satisfied if there is a match between the assignment and in <c></c> nullability mapping declared.
+    /// Activates constraint rules logic and validates the given field's value.
+    /// In order to the constraint to be considered as satisfied,
+    /// the value's nullability must match to the constraint's defined configuration.
     /// </summary>
-    /// <param name="fieldsAssignment">The current field-value mapping.</param>
-    /// <returns><c>true</c> if the constraint is satisfied, otherwise <c>false</c>.</returns>
-    public override bool IsSatisfied(IReadOnlyDictionary<string, object?> fieldsAssignment)
+    /// <param name="fieldName">The target field name to be checked.</param>
+    /// <param name="value">The value of the given field.</param>
+    /// <returns>True if value satisfies constraint, false otherwise.</returns>
+    protected override bool IsFieldValid(string fieldName, object? value)
     {
-        if (!ShouldApply(fieldsAssignment))
-            return true;
+        var nullable = TargetNullability.TryGetValue(fieldName, out var rule) && rule;
 
-        foreach (var (field, nullable) in TargetFieldNullabilityMap)
-        {
-            var exists = fieldsAssignment.TryGetValue(field, out var value);
-
-            if (nullable)
-            {
-                if (exists && value is not null)
-                    return false;
-            }
-            else
-            {
-                if (!exists || value is null)
-                    return false;
-            }
-        }
-
-        return true;
+        return nullable
+            ? value is null
+            : value is not null;
     }
 }

@@ -12,31 +12,27 @@ public sealed class RangeConstraint<T>(
     : Constraint(targets, when)
     where T : IComparable<T>
 {
-    public override bool IsSatisfied(IReadOnlyDictionary<string, object?> fieldsAssignment)
+    /// <summary>
+    /// Activates constraint rules logic and validates the given field's value.
+    /// In order to the constraint to be considered as satisfied, the value must be at the defined range.
+    /// </summary>
+    /// <param name="fieldName">The target field name to be checked.</param>
+    /// <param name="value">The value of the given field.</param>
+    /// <returns>True if value satisfies constraint, false otherwise.</returns>
+    protected override bool IsFieldValid(string fieldName, object? value)
     {
-        if (!ShouldApply(fieldsAssignment))
-            return true;
+        if (value is not T tValue) return false;
 
-        foreach (var target in Targets)
+        if (min is not null)
         {
-            if (!fieldsAssignment.TryGetValue(target, out var rawValue) || rawValue is not T value)
-                continue;
-
-            if (min is not null)
-            {
-                var cmp = value.CompareTo(min);
-                if (lowerInclusive ? cmp < 0 : cmp <= 0)
-                    return false;
-            }
-
-            if (max is null) continue;
-            {
-                var cmp = value.CompareTo(max);
-                if (upperInclusive ? cmp > 0 : cmp >= 0)
-                    return false;
-            }
+            var cmpLower = tValue.CompareTo(min);
+            if (lowerInclusive ? cmpLower < 0 : cmpLower <= 0)
+                return false;
         }
 
-        return true;
+        if (max is null) return true;
+
+        var cmpUpper = tValue.CompareTo(max);
+        return upperInclusive ? cmpUpper <= 0 : cmpUpper < 0;
     }
 }

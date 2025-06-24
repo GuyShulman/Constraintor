@@ -20,23 +20,13 @@ public class SetConstraint<T>(
     public IReadOnlySet<T> AllowedSet => allowedValues.ToHashSet();
 
     /// <summary>
-    ///  Determines whether the constraint is satisfied based on the current field assignments.
-    /// Constraint considers satisfied if there is a match between the assignment and in <c>_allowedSet</c> collection.
+    /// Activates constraint rules logic and validates the given field's value.
+    /// In order to the constraint to be considered as satisfied,
+    /// the value must be contained in <c>allowedValues</c> collection.
     /// </summary>
-    /// <param name="fieldsAssignment">The current field-value mapping.</param>
-    /// <returns><c>true</c> if the constraint is satisfied, otherwise <c>false</c>.</returns>
-    public override bool IsSatisfied(IReadOnlyDictionary<string, object?> fieldsAssignment)
-    {
-        if (!ShouldApply(fieldsAssignment))
-            return true;
-
-        foreach (var target in Targets)
-        {
-            if (!fieldsAssignment.TryGetValue(target, out var val) || val is not T typed ||
-                !AllowedSet.Contains(typed))
-                return false;
-        }
-
-        return true;
-    }
+    /// <param name="fieldName">The target field name to be checked.</param>
+    /// <param name="value">The value of the given field.</param>
+    /// <returns>True if value satisfies constraint, false otherwise.</returns>
+    protected override bool IsFieldValid(string fieldName, object? value)
+        => value is T t && AllowedSet.Contains(t);
 }
