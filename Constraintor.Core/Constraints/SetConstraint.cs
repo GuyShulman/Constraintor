@@ -1,3 +1,5 @@
+using System.Collections.Immutable;
+using Constraintor.Core.Common;
 using Constraintor.Core.Utils;
 
 namespace Constraintor.Core.Constraints;
@@ -8,16 +10,20 @@ namespace Constraintor.Core.Constraints;
 /// Thus,the values are expected to be convertible to their actual type.
 /// Moreover, the process logic relying on preliminary stage of parsing in the appropriate DTO layer.
 /// </summary>
-public class SetConstraint<T>(
+public sealed class SetConstraint<T>(
     IEnumerable<string> targets,
-    IReadOnlyDictionary<string, List<ActivationCondition>> when,
+    IReadOnlyDictionary<string, List<IActivationCondition>> when,
     IReadOnlyList<T> allowedValues)
-    : Constraint(targets, when) where T : IEquatable<T>
+    : Constraint(targets, when) where T : IEquatable<T>, IDeepCloneable<T>
 {
     /// <summary>
     /// A collection of optional valid values for the field within the constraint.
     /// </summary>
-    public IReadOnlySet<T> AllowedSet => allowedValues.ToHashSet();
+    public readonly ImmutableHashSet<T?> AllowedSet =
+        allowedValues
+            .Select(v => v.DeepClone())
+            .Where(c => c is not null)
+            .ToImmutableHashSet();
 
     /// <summary>
     /// Activates constraint rules logic and validates the given field's value.

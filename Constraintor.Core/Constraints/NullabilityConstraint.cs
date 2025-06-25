@@ -1,4 +1,4 @@
-using Constraintor.Core.Utils;
+using Constraintor.Core.Common;
 
 namespace Constraintor.Core.Constraints;
 
@@ -8,14 +8,16 @@ namespace Constraintor.Core.Constraints;
 /// indicates each field nullability under the conditions declared.
 /// </summary>
 public sealed class NullabilityConstraint(
-    IReadOnlyDictionary<string, bool> targetNullability,
-    IReadOnlyDictionary<string, List<ActivationCondition>>? when = null)
+    IDictionary<string, bool> targetNullability,
+    IReadOnlyDictionary<string, List<IActivationCondition>>? when = null)
     : Constraint(targetNullability.Keys, when)
 {
     /// <summary>
     /// Maps each field to a boolean indicating whether it must be null (true) or non-null (false).
     /// </summary>
-    private IReadOnlyDictionary<string, bool> TargetNullability { get; } = targetNullability;
+    public readonly IReadOnlyDictionary<string, bool> TargetNullability =
+        new Dictionary<string, bool>(targetNullability);
+
 
     /// <summary>
     /// Activates constraint rules logic and validates the given field's value.

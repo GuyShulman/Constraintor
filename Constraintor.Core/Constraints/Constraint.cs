@@ -1,4 +1,5 @@
-using Constraintor.Core.Utils;
+using System.Collections.Immutable;
+using Constraintor.Core.Common;
 
 namespace Constraintor.Core.Constraints;
 
@@ -9,13 +10,13 @@ namespace Constraintor.Core.Constraints;
 /// </summary>
 public abstract class Constraint(
     IEnumerable<string> targets,
-    IReadOnlyDictionary<string, List<ActivationCondition>>? when = null) : IViolatingConstraint
+    IReadOnlyDictionary<string, List<IActivationCondition>>? when = null) : IViolatingConstraint
 {
     /// <summary>
     /// The list of field names this constraint applies to.
     /// Typically, a constraint targets a single field, but multi-field constraints are allowed.
     /// </summary>
-    public IReadOnlyList<string> Targets => targets.ToList().AsReadOnly();
+    public readonly IReadOnlyList<string> Targets = targets.ToList().AsReadOnly();
 
     /// <summary>
     /// Prerequisite conditions under which this constraint becomes active.
@@ -25,8 +26,12 @@ public abstract class Constraint(
     /// All conditions across all fields must match (logical AND).
     /// Multiple conditions for a single field are also evaluated as AND.
     /// </summary>
-    private IReadOnlyDictionary<string, List<ActivationCondition>> When { get; } =
-        when ?? new Dictionary<string, List<ActivationCondition>>();
+    public readonly ImmutableDictionary<string, List<IActivationCondition>> When =
+        when?.ToImmutableDictionary(
+            kvp => kvp.Key,
+            kvp => kvp.Value.Select(condition => condition.DeepClone()).ToList()
+        ) ?? ImmutableDictionary<string, List<IActivationCondition>>.Empty;
+
 
     /// <summary>
     /// Determines whether this constraint should be applied
